@@ -12,18 +12,37 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
+import { useAuthStore } from '../store/authStore'; // Import your auth store
 
-// CHANGE IS HERE: Added { navigation } to receive the navigation prop
+
 const LoginScreen = ({ navigation }) => {
   const [phone, setPhone] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { sendOTP } = useAuthStore(); // Get sendOTP function from store
 
   const isPhoneValid = phone.length === 10 && /^\d{10}$/.test(phone);
 
-  const handleContinue = () => {
-    if (isPhoneValid) {
-      // This will now work correctly
-      navigation.navigate('OtpScreen', { phone: phone });
+  const handleContinue = async () => {
+    if (!isPhoneValid) return;
+
+    setIsLoading(true);
+    try {
+      // Call the sendOTP API
+      const response = await sendOTP(phone);
+      
+      // Navigate to OTP screen on success
+      navigation.navigate('OtpScreen', { 
+        phone: phone,
+        // You can pass additional data if needed
+      });
+      
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to send OTP');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -54,10 +73,14 @@ const LoginScreen = ({ navigation }) => {
 
             <TouchableOpacity
               style={[styles.button, !isPhoneValid && styles.disabled]}
-              disabled={!isPhoneValid}
+              disabled={!isPhoneValid || isLoading}
               onPress={handleContinue}
             >
-              <Text style={styles.buttonText}>Continue</Text>
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Continue</Text>
+              )}
             </TouchableOpacity>
 
             <View style={styles.orContainer}>
@@ -86,7 +109,7 @@ const LoginScreen = ({ navigation }) => {
   );
 };
 
-// ... Your styles remain the same
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

@@ -20,6 +20,7 @@ target 'InLuv' do
   pod 'FirebaseCore', :modular_headers => true
   pod 'FirebaseAppCheckInterop', :modular_headers => true
   pod 'leveldb-library', :modular_headers => true
+  pod 'FirebaseAuth', :modular_headers => true
 
   use_react_native!(
     :path => config[:reactNativePath],

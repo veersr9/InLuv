@@ -7,8 +7,11 @@ import {
   TextInput,
   Keyboard,
   Pressable,
+  Alert, // ✅ for error messages
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import auth from '@react-native-firebase/auth'; // ✅ Firebase import
+import { authService } from '../services/api/authService'; // Direct service import
 
 const OtpScreen = ({ route }) => {
   const { phoneNumber } = route.params;
@@ -17,15 +20,29 @@ const OtpScreen = ({ route }) => {
   const [otp, setOtp] = useState(['', '', '', '']);
   const inputs = useRef([]);
   const [timer, setTimer] = useState(60);
+  const [isLoading, setIsLoading] = useState(false);
+  const [canResend, setCanResend] = useState(false);
 
-  // ✅ Timer setup and cleanup
+  // // ✅ Timer setup and cleanup
+  // useEffect(() => {
+  //   let interval = setInterval(() => {
+  //     setTimer((prev) => (prev > 0 ? prev - 1 : 0));
+  //   }, 1000);
+
+  //   return () => clearInterval(interval); // Cleanup
+  // }, []);
+   // Timer for resend OTP
   useEffect(() => {
     let interval = setInterval(() => {
-      setTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      setTimer((prev) => {
+        if (prev > 0) return prev - 1;
+        setCanResend(true);
+        return 0;
+      });
     }, 1000);
 
-    return () => clearInterval(interval); // Cleanup
-  }, []);
+    return () => clearInterval(interval);
+  }, []); 
 
   // ✅ Input handler
   const handleChange = (text, index) => {
@@ -47,15 +64,77 @@ const OtpScreen = ({ route }) => {
     navigation.goBack();
   };
 
-  // ✅ Verify action
-  const handleVerify = () => {
-    const finalOtp = otp.join('');
-    console.log('Verifying OTP:', finalOtp);
-    // You can add your API call here
-    navigation.navigate('MainTabs');
-  };
+  // ✅ Verify action with Firebase
+  // const handleVerify = async () => {
+  //   const finalOtp = otp.join('');
+  //   console.log('Verifying OTP:', finalOtp);
 
-  const isOtpComplete = otp.every(d => d !== '');
+  //   if (finalOtp === '1234') {
+  //     try {
+  //       await auth().signInAnonymously(); // ✅ Firebase login
+  //       navigation.navigate('MainTabs'); // ✅ Navigate on success
+  //     } catch (error) {
+  //       Alert.alert('Login Failed', error.message);
+  //     }
+  //   } else {
+  //     Alert.alert('Invalid OTP', 'Please enter the correct 4-digit OTP.');
+  //   }
+  // };
+
+  // Verify OTP
+  // Verify OTP
+const handleVerify = async () => {
+  const finalOtp = otp.join('');
+  
+  if (finalOtp.length !== 4) {
+    Alert.alert('Error', 'Please enter 4-digit OTP');
+    return;
+  }
+
+  setIsLoading(true);
+  
+  // Simulate API call delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  try {
+    console.log('Verifying OTP:', finalOtp, 'for phone:', phoneNumber);
+    
+    // Hardcoded OTP check - change "1234" to whatever OTP you want to test with
+    if (finalOtp === '1234') {
+      console.log('✅ OTP verification successful!');
+      Alert.alert('Success', 'Login successful!');
+      
+      // Navigate to main app
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      });
+    } else {
+      console.log('❌ Invalid OTP entered');
+      Alert.alert('Error', 'Invalid OTP. Please try again.');
+      
+      // Clear OTP on error
+      setOtp(['', '', '', '']);
+      if (inputs.current[0]) {
+        inputs.current[0].focus();
+      }
+    }
+    
+  } catch (error) {
+    console.log('OTP Verification Error:', error);
+    Alert.alert('Error', 'Something went wrong. Please try again.');
+    
+    // Clear OTP on error
+    setOtp(['', '', '', '']);
+    if (inputs.current[0]) {
+      inputs.current[0].focus();
+    }
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+  const isOtpComplete = otp.every((d) => d !== '');
 
   return (
     <Pressable style={styles.container} onPress={Keyboard.dismiss}>
@@ -90,7 +169,9 @@ const OtpScreen = ({ route }) => {
       </View>
 
       <Text style={styles.timerText}>
-        {timer > 0 ? `Resend OTP in 00:${timer.toString().padStart(2, '0')}` : 'You can resend OTP now'}
+        {timer > 0
+          ? `Resend OTP in 00:${timer.toString().padStart(2, '0')}`
+          : 'You can resend OTP now'}
       </Text>
 
       <TouchableOpacity
